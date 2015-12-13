@@ -100,13 +100,13 @@ public class SalonDataProcessor implements Serializable
     public static void main( String[] args )
     {
         String dataFile = "C:\\bigData\\BigDataMeetup\\publicData\\tabletalk-torrent\\PreProcessOutput\\TEST\\tableTalkComments*.txt";
-        String allShingleDocIdDistinctRDDGroupedByKeyFile = "C:\\bigData\\HadoopFreeSpark\\output\\allShingleDocIdDistinctRDDGroupedByKey";
+        String shingleIdDocIdPairRDDGroupedByKeyFile = "C:\\bigData\\HadoopFreeSpark\\output\\allShingleDocIdDistinctRDDGroupedByKey";
         String minHashNumbersFile = "C:\\bigData\\HadoopFreeSpark\\output\\minHashNumbers";
         String shingleIdMappedToDocIdListsFile = "C:\\bigData\\HadoopFreeSpark\\output\\shingleIdMappedToDocIdLists";
         String docIdMinHashValuePairsFile = "C:\\bigData\\HadoopFreeSpark\\output\\docIdMinHashValuePairs";
 
         //String dataFile = "input/tableTalkComments*.txt";
-        //String allShingleDocIdDistinctRDDGroupedByKeyFile = "output/allShingleDocIdDistinctRDDGroupedByKey";
+        //String shingleIdDocIdPairRDDGroupedByKeyFile = "output/allShingleDocIdDistinctRDDGroupedByKey";
         //String minHashNumbersFile = "output/minHashNumbers";
     	
     	final int shingleLength=6;
@@ -118,7 +118,7 @@ public class SalonDataProcessor implements Serializable
         //JavaRDD<String> commentsRawData = sc.textFile(dataFile).cache();
         JavaRDD<String> commentsRawData = sc.textFile(dataFile);
     	
-        JavaPairRDD<Long, SortedSet<String>> docIdShingleSetPairRDD = commentsRawData.mapToPair(
+        JavaPairRDD<Long, SortedSet<String>> docIdSortedShingleSetPairRDD = commentsRawData.mapToPair(
         		new PairFunction<
         				String, // T as input
         				Long, // K as output
@@ -144,7 +144,7 @@ public class SalonDataProcessor implements Serializable
         			}
         });
         
-        JavaPairRDD<Long, ArrayList<Long>> minHashPairRDD = docIdShingleSetPairRDD.mapToPair(
+        JavaPairRDD<Long, ArrayList<Long>> minHashPairRDD = docIdSortedShingleSetPairRDD.mapToPair(
         		new PairFunction<
         		        Tuple2<Long, SortedSet<String>>, // T as input
         		        Long, // as output
@@ -162,7 +162,7 @@ public class SalonDataProcessor implements Serializable
         //System.out.println("minHashPairRDD count: " + minHashPairRDD.count());
         //minHashPairRDD.saveAsTextFile(minHashNumbersFile);
 
-        JavaPairRDD<String, Long> allShingleDocIdDistinctRDD = docIdShingleSetPairRDD
+        JavaPairRDD<String, Long> shingleDocIdPairRDD = docIdSortedShingleSetPairRDD
         		.flatMapToPair(new PairFlatMapFunction<Tuple2<Long, SortedSet<String>>, String, Long>() {
 			@Override
 			public Iterable<Tuple2<String, Long>> call(Tuple2<Long, SortedSet<String>> arg0)
@@ -175,10 +175,10 @@ public class SalonDataProcessor implements Serializable
 			}
           });
     
-        JavaPairRDD<String, Iterable<Long>> allShingleDocIdRDDGroupedByKey =  allShingleDocIdDistinctRDD.groupByKey().sortByKey();
-        JavaPairRDD<Tuple2<String, Iterable<Long>>, Long> allShingleDocIdRDDGroupedByKeyIndexed =  allShingleDocIdRDDGroupedByKey.zipWithIndex();
+        JavaPairRDD<String, Iterable<Long>> shingleDocPairRDDGroupedByKey =  shingleDocIdPairRDD.groupByKey().sortByKey();
+        JavaPairRDD<Tuple2<String, Iterable<Long>>, Long> shingleDocIdPairRDDGroupedByKeyIndexed =  shingleDocPairRDDGroupedByKey.zipWithIndex();
         
-        JavaPairRDD<Long, Iterable<Long>> shingleIdMappedToDocIdLists =  allShingleDocIdRDDGroupedByKeyIndexed
+        JavaPairRDD<Long, Iterable<Long>> shingleIdMappedToDocIdLists =  shingleDocIdPairRDDGroupedByKeyIndexed
         							.mapToPair(new PairFunction<Tuple2<Tuple2<String, Iterable<Long>>, Long>, Long, Iterable<Long>>(){
 										@Override
 										public Tuple2<Long, Iterable<Long>> call(
@@ -227,34 +227,10 @@ public class SalonDataProcessor implements Serializable
         docIdMinHashValuePairs.saveAsTextFile(docIdMinHashValuePairsFile);
           
 
-        //System.out.println("allShingleDocIdDistinctRDDGroupedByKey count: " + allShingleDocIdRDDGroupedByKey.count());
-        //allShingleDocIdRDDGroupedByKey.saveAsTextFile(allShingleDocIdDistinctRDDGroupedByKeyFile);
+        //System.out.println("shingleIdDocIdPairRDDGroupedByKey count: " + shingleIdDocIdPairRDDGroupedByKey.count());
+        //shingleIdDocIdPairRDDGroupedByKey.saveAsTextFile(shingleIdDocIdPairRDDGroupedByKeyFile);
     
-        /*allShingleDocIdRDDGroupedByKey.foreach(new Function2<String, Iterable<Long>, Void>() {
-            @Override
-            public Void call(String, Iterable<Long> rdd) throws IOException {
-              String counts = "Counts at time " + time + " " + rdd.collect();
-              System.out.println(counts);
-              System.out.println("Appending to " + outputFile.getAbsolutePath());
-              Files.append(counts + "\n", outputFile, Charset.defaultCharset());
-              return null;
-            }
-          });
-        
-        
-        allShingleDocIdRDDGroupedByKey.foreach(new VoidFunction<Tuple2<String, Iterable<Long>>>(){ 
-        	@Override
-        	public void call(Tuple2<String, Iterable<Long>> asdirgbp) {
-        		for(Long colId : asdirgbp._2){
-        			for(int i = 0; i < minHashSigLen; i++){
-        				//long curr = minHashPairRDD.lookup(colId).get(0).get(i);
-        				//long candidate = 250L;
-        				// minHashPairRDD.lookup(colId).get(0).set(i, candidate);
-        			}
-        		}
-
-          }
-        });*/
+      
         
         System.out.println("minHashPairRDD count: " + minHashPairRDD.count());
         minHashPairRDD.saveAsTextFile(minHashNumbersFile);
