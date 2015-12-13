@@ -104,13 +104,17 @@ public class SalonDataProcessor implements Serializable
         String minHashNumbersFile = "C:\\bigData\\HadoopFreeSpark\\output\\minHashNumbers";
         String shingleIdMappedToDocIdListsFile = "C:\\bigData\\HadoopFreeSpark\\output\\shingleIdMappedToDocIdLists";
         String docIdMinHashValuePairsFile = "C:\\bigData\\HadoopFreeSpark\\output\\docIdMinHashValuePairs";
+        String candiateDocSetsFile = "C:\\bigData\\HadoopFreeSpark\\output\\candidateDocSets";
+
 
         //String dataFile = "input/tableTalkComments*.txt";
         //String shingleIdDocIdPairRDDGroupedByKeyFile = "output/allShingleDocIdDistinctRDDGroupedByKey";
         //String minHashNumbersFile = "output/minHashNumbers";
     	
     	final int shingleLength=6;
-        final int minHashSigLen=25;
+        final int minHashSigLen=24;
+        final int lshBlockSize=4;
+        final Long lshBucketsSize=9999L;
         final SalonDataProcessor salonDataProcessor = new SalonDataProcessor();
         
         SparkConf conf = new SparkConf().setAppName("Salon Table Talk Data Processor");
@@ -202,23 +206,31 @@ public class SalonDataProcessor implements Serializable
         
         //int minHashIndex=0;
         
-        JavaPairRDD<Long,Long> docIdMinHashValuePairs = shingleIdMappedToDocIdLists
-        			.flatMapToPair(new PairFlatMapFunction<Tuple2<Long, Iterable<Long>>, Long,Long>() {
+        JavaPairRDD<Long,ArrayList<Long>> docIdMinHashValuePairs = shingleIdMappedToDocIdLists
+        			.flatMapToPair(new PairFlatMapFunction<Tuple2<Long, Iterable<Long>>, Long,ArrayList<Long>>() {
 			@Override
-			public Iterable<Tuple2<Long, Long>> call(Tuple2<Long, Iterable<Long>> arg0)
+			public Iterable<Tuple2<Long, ArrayList<Long>>> call(Tuple2<Long, Iterable<Long>> arg0)
 					throws Exception {
-				ArrayList<Tuple2<Long,Long>> docIdHashValuePair = new ArrayList<Tuple2<Long,Long>>();
+				ArrayList<Tuple2<Long,ArrayList<Long>>> docIdHashValuesPair = new ArrayList<Tuple2<Long,ArrayList<Long>>>();
 				for (Long docId: arg0._2){
-					Long primeForHash = broadCastedHashUtil.getValue().selectedRandomPrimes.get(0);
-					Long hashVal = broadCastedHashUtil.getValue().FindHashValue(arg0._1, primeForHash);
-					docIdHashValuePair.add(new Tuple2<Long,Long>(docId, hashVal));
+					ArrayList<Long> hashValues = new ArrayList<Long>();
+					for(int i = 0; i < minHashSigLen; i++){
+						Long primeForHash = broadCastedHashUtil.getValue().selectedRandomPrimes.get(i);
+						hashValues.add(broadCastedHashUtil.getValue().FindHashValue(arg0._1, primeForHash));
+					}
+					//Long hashVal = broadCastedHashUtil.getValue().FindHashValue(arg0._1, primeForHash);
+					docIdHashValuesPair.add(new Tuple2<Long,ArrayList<Long>>(docId, hashValues));
 				}
-				return docIdHashValuePair;
+				return docIdHashValuesPair;
 			}
-          }).reduceByKey(new Function2<Long,Long,Long>(){
+          }).reduceByKey(new Function2<ArrayList<Long>,ArrayList<Long>,ArrayList<Long>>(){
         	  @Override
-        	  public Long call(Long l1, Long l2){
-        		  return Math.min(l1, l2);
+        	  public ArrayList<Long> call(ArrayList<Long> l1, ArrayList<Long> l2){
+        		  ArrayList<Long> minHashValues = new ArrayList<Long>();
+        		  for(int i = 0; i < minHashSigLen; i++){
+        			  minHashValues.add(Math.min(l1.get(i), l2.get(i)));
+        		  }
+        		  return minHashValues;
         	  }
           }).sortByKey();
         
@@ -226,14 +238,37 @@ public class SalonDataProcessor implements Serializable
         System.out.println("docIdMinHashValuePairsCount: " + docIdMinHashValuePairsCount);
         docIdMinHashValuePairs.saveAsTextFile(docIdMinHashValuePairsFile);
           
-
+        int numOfLSHBlocks = minHashSigLen/lshBlockSize;
+        for(int ll = 0; ll < numOfLSHBlocks; ll++){
+        	String path = candiateDocSetsFile + Integer.toString(ll);
+        	final int loopvalue = ll;  //Need loopValue as final to be able to use it in the map function below
+            JavaPairRDD<Long, Iterable<Long>> LSHBuckets = docIdMinHashValuePairs.mapToPair(
+            		new PairFunction<
+            		        Tuple2<Long, ArrayList<Long>>, // T as input
+            		        Long, // as output hash value
+            		        Long // as output doc Id
+            		>() {
+            			@Override
+            			public Tuple2<Long, Long> call(Tuple2<Long, ArrayList<Long>> element) {
+            				Long sum=0L;
+                        	for(int i = 0; i < lshBlockSize; i++){
+                        		sum += element._2.get(loopvalue*lshBlockSize + i);
+                        	}
+                        	
+            				return new Tuple2<Long, Long>(sum%lshBucketsSize, element._1);
+            			}
+            }).groupByKey();
+            System.out.println("Saving candidate doc sets that appear to be similar in file: " + path);
+            LSHBuckets.saveAsTextFile(path);
+            
+        }
         //System.out.println("shingleIdDocIdPairRDDGroupedByKey count: " + shingleIdDocIdPairRDDGroupedByKey.count());
         //shingleIdDocIdPairRDDGroupedByKey.saveAsTextFile(shingleIdDocIdPairRDDGroupedByKeyFile);
     
       
         
-        System.out.println("minHashPairRDD count: " + minHashPairRDD.count());
-        minHashPairRDD.saveAsTextFile(minHashNumbersFile);
+        //System.out.println("minHashPairRDD count: " + minHashPairRDD.count());
+        //minHashPairRDD.saveAsTextFile(minHashNumbersFile);
         
         
     }
