@@ -99,18 +99,21 @@ public class SalonDataProcessor implements Serializable
 
     public static void main( String[] args )
     {
-        String dataFile = "C:\\bigData\\BigDataMeetup\\publicData\\tabletalk-torrent\\PreProcessOutput\\TEST\\tableTalkComments*.txt";
-        String shingleIdDocIdPairRDDGroupedByKeyFile = "C:\\bigData\\HadoopFreeSpark\\output\\allShingleDocIdDistinctRDDGroupedByKey";
-        String minHashNumbersFile = "C:\\bigData\\HadoopFreeSpark\\output\\minHashNumbers";
-        String shingleIdMappedToDocIdListsFile = "C:\\bigData\\HadoopFreeSpark\\output\\shingleIdMappedToDocIdLists";
-        String docIdMinHashValuePairsFile = "C:\\bigData\\HadoopFreeSpark\\output\\docIdMinHashValuePairs";
-        String candiateDocSetsFile = "C:\\bigData\\HadoopFreeSpark\\output\\candidateDocSets";
+        //String dataFile = "C:\\bigData\\BigDataMeetup\\publicData\\tabletalk-torrent\\PreProcessOutput\\TEST\\tableTalkComments*.txt";
+        //String shingleIdDocIdPairRDDGroupedByKeyFile = "C:\\bigData\\HadoopFreeSpark\\output\\allShingleDocIdDistinctRDDGroupedByKey";
+        //String minHashNumbersFile = "C:\\bigData\\HadoopFreeSpark\\output\\minHashNumbers";
+        //String shingleIdMappedToDocIdListsFile = "C:\\bigData\\HadoopFreeSpark\\output\\shingleIdMappedToDocIdLists";
+        //String docIdMinHashValuePairsFile = "C:\\bigData\\HadoopFreeSpark\\output\\docIdMinHashValuePairs";
+        //String candiateDocSetsFile = "C:\\bigData\\HadoopFreeSpark\\output\\candidateDocSets";
 
 
-        //String dataFile = "input/tableTalkComments*.txt";
-        //String shingleIdDocIdPairRDDGroupedByKeyFile = "output/allShingleDocIdDistinctRDDGroupedByKey";
-        //String minHashNumbersFile = "output/minHashNumbers";
-    	
+        String dataFile = "input/tableTalkComments*.txt";
+        String shingleIdDocIdPairRDDGroupedByKeyFile = "output/allShingleDocIdDistinctRDDGroupedByKey";
+        String minHashNumbersFile = "output/minHashNumbers";
+        String shingleIdMappedToDocIdListsFile = "output/shingleIdMappedToDocIdLists";
+        String docIdMinHashValuePairsFile = "output/docIdMinHashValuePairs";
+        String candiateDocSetsFile = "output/candidateDocSets";
+        
     	final int shingleLength=6;
         final int minHashSigLen=24;
         final int lshBlockSize=4;
